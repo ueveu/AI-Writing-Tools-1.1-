@@ -23,9 +23,6 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         
         self.init_ui()
         
-        # Automatically trigger initial analysis
-        self.send_message("Please analyze this image and describe what you see.")
-        
     def init_ui(self):
         self.setWindowTitle('Image Analysis')
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint | QtCore.Qt.WindowType.WindowStaysOnTopHint)
