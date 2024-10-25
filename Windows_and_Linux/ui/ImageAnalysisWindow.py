@@ -14,11 +14,14 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         self.app = app
         self.screenshot_path = screenshot_path
         
-        # Initialize syntax highlighting formatter
+        # Initialize syntax highlighting formatter with custom styles
+        style = 'monokai' if colorMode == 'dark' else 'default'
         self.formatter = HtmlFormatter(
-            style='monokai' if colorMode == 'dark' else 'default',
+            style=style,
             cssclass='highlight',
-            noclasses=True
+            noclasses=True,
+            linenos=False,
+            prestyles='border-radius: 5px; padding: 15px; margin: 10px 0;'
         )
         
         self.init_ui()
@@ -27,7 +30,7 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         self.setWindowTitle('Image Analysis')
         self.setWindowFlags(QtCore.Qt.WindowType.FramelessWindowHint | QtCore.Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(1000, 600)  # Increased width for better readability
 
         # Main layout
         main_layout = QtWidgets.QVBoxLayout(self)
@@ -37,14 +40,17 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         self.background = ThemeBackground(self, self.app.config.get('theme', 'gradient'), is_popup=True)
         main_layout.addWidget(self.background)
 
-        # Content layout
-        content_layout = QtWidgets.QHBoxLayout(self.background)
-        content_layout.setContentsMargins(20, 20, 20, 20)
-        content_layout.setSpacing(20)
-
-        # Left side - Image display
-        image_widget = QtWidgets.QWidget()
-        image_layout = QtWidgets.QVBoxLayout(image_widget)
+        # Title bar
+        title_bar = QtWidgets.QHBoxLayout()
+        title_label = QtWidgets.QLabel("Image Analysis")
+        title_label.setStyleSheet(f"""
+            color: {'#fff' if colorMode == 'dark' else '#333'};
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px;
+        """)
+        title_bar.addWidget(title_label)
+        title_bar.addStretch()
         
         # Close button
         close_button = QtWidgets.QPushButton("×")
@@ -54,52 +60,93 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
                 color: {'#ffffff' if colorMode == 'dark' else '#333333'};
                 font-size: 20px;
                 border: none;
-                padding: 5px;
+                padding: 5px 15px;
             }}
             QPushButton:hover {{
-                background-color: {'#333333' if colorMode == 'dark' else '#ebebeb'};
+                background-color: {'#ff4444' if colorMode == 'dark' else '#ffdddd'};
+                border-radius: 5px;
             }}
         """)
         close_button.clicked.connect(self.close)
-        image_layout.addWidget(close_button, 0, QtCore.Qt.AlignmentFlag.AlignRight)
+        title_bar.addWidget(close_button)
+
+        # Content layout
+        content_layout = QtWidgets.QHBoxLayout()
+        content_layout.setContentsMargins(20, 10, 20, 20)
+        content_layout.setSpacing(20)
+
+        # Left side - Image display
+        image_widget = QtWidgets.QWidget()
+        image_layout = QtWidgets.QVBoxLayout(image_widget)
+        image_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Image frame
+        image_frame = QtWidgets.QFrame()
+        image_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {'#222' if colorMode == 'dark' else '#fff'};
+                border: 1px solid {'#444' if colorMode == 'dark' else '#ddd'};
+                border-radius: 8px;
+                padding: 10px;
+            }}
+        """)
+        image_frame_layout = QtWidgets.QVBoxLayout(image_frame)
         
         # Load and display the image
         pixmap = QtGui.QPixmap(self.screenshot_path)
-        scaled_pixmap = pixmap.scaled(400, 400, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        scaled_pixmap = pixmap.scaled(450, 450, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         
         image_label = QtWidgets.QLabel()
         image_label.setPixmap(scaled_pixmap)
         image_label.setAlignment(Qt.AlignCenter)
-        image_layout.addWidget(image_label)
+        image_frame_layout.addWidget(image_label)
         
+        image_layout.addWidget(image_frame)
         content_layout.addWidget(image_widget)
         
         # Right side - Chat interface
         chat_widget = QtWidgets.QWidget()
         chat_layout = QtWidgets.QVBoxLayout(chat_widget)
+        chat_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Chat history with syntax highlighting support
+        # Chat frame
+        chat_frame = QtWidgets.QFrame()
+        chat_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {'#222' if colorMode == 'dark' else '#fff'};
+                border: 1px solid {'#444' if colorMode == 'dark' else '#ddd'};
+                border-radius: 8px;
+                padding: 10px;
+            }}
+        """)
+        chat_frame_layout = QtWidgets.QVBoxLayout(chat_frame)
+        
+        # Chat history
         self.chat_history = QtWidgets.QTextEdit()
         self.chat_history.setReadOnly(True)
         self.chat_history.setStyleSheet(f"""
             QTextEdit {{
-                background-color: {'#333' if colorMode == 'dark' else '#fff'};
+                background-color: transparent;
                 color: {'#fff' if colorMode == 'dark' else '#000'};
-                border: 1px solid {'#555' if colorMode == 'dark' else '#ccc'};
-                border-radius: 5px;
-                padding: 10px;
-                font-family: "Consolas", monospace;
-            }}
-            .highlight {{
-                margin: 5px 0;
-                padding: 10px;
-                border-radius: 5px;
+                border: none;
+                font-family: "Segoe UI", "Arial", sans-serif;
+                font-size: 14px;
+                selection-background-color: {'#444' if colorMode == 'dark' else '#cce8ff'};
             }}
         """)
-        chat_layout.addWidget(self.chat_history)
+        chat_frame_layout.addWidget(self.chat_history)
         
         # Input area
-        input_layout = QtWidgets.QHBoxLayout()
+        input_frame = QtWidgets.QFrame()
+        input_frame.setStyleSheet(f"""
+            QFrame {{
+                background-color: {'#333' if colorMode == 'dark' else '#f5f5f5'};
+                border-radius: 8px;
+                padding: 10px;
+            }}
+        """)
+        input_layout = QtWidgets.QHBoxLayout(input_frame)
+        input_layout.setContentsMargins(10, 10, 10, 10)
         
         self.input_field = QtWidgets.QLineEdit()
         self.input_field.setPlaceholderText("Ask about the image...")
@@ -107,15 +154,18 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
             QLineEdit {{
                 background-color: {'#444' if colorMode == 'dark' else '#fff'};
                 color: {'#fff' if colorMode == 'dark' else '#000'};
-                border: 1px solid {'#555' if colorMode == 'dark' else '#ccc'};
+                border: 1px solid {'#555' if colorMode == 'dark' else '#ddd'};
                 border-radius: 5px;
-                padding: 8px;
+                padding: 8px 12px;
+                font-size: 14px;
+            }}
+            QLineEdit:focus {{
+                border: 1px solid {'#666' if colorMode == 'dark' else '#999'};
             }}
         """)
         self.input_field.returnPressed.connect(self.send_message)
         input_layout.addWidget(self.input_field)
         
-        # Send button
         send_button = QtWidgets.QPushButton("Send")
         send_button.setStyleSheet(f"""
             QPushButton {{
@@ -123,17 +173,28 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
                 color: white;
                 border: none;
                 border-radius: 5px;
-                padding: 8px 15px;
+                padding: 8px 20px;
+                font-size: 14px;
+                font-weight: bold;
             }}
             QPushButton:hover {{
                 background-color: {'#1b5e20' if colorMode == 'dark' else '#45a049'};
+            }}
+            QPushButton:pressed {{
+                background-color: {'#194d19' if colorMode == 'dark' else '#3d8b40'};
             }}
         """)
         send_button.clicked.connect(self.send_message)
         input_layout.addWidget(send_button)
         
-        chat_layout.addLayout(input_layout)
-        content_layout.addWidget(chat_widget)
+        chat_frame_layout.addWidget(input_frame)
+        chat_layout.addWidget(chat_frame)
+        content_layout.addWidget(chat_widget, stretch=1)  # Give chat widget more space
+
+        # Add layouts to background
+        main_content = QtWidgets.QVBoxLayout(self.background)
+        main_content.addLayout(title_bar)
+        main_content.addLayout(content_layout)
 
     def format_code_blocks(self, text):
         """Format code blocks with syntax highlighting"""
