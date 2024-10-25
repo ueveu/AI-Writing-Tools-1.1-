@@ -214,77 +214,44 @@ class Gemini15FlashProvider(AIProvider):
     def cancel(self):
         self.close_requested = True
 
-    def analyze_image(self, image_path: str, prompt: str):
+    def analyze_image(self, screenshot_path, prompt):
         """
-        Analyze an image using the AI provider.
+        Analyze an image using Gemini's vision capabilities
         """
         try:
-            if isinstance(self, Gemini15FlashProvider):
-                # For Gemini provider
-                import PIL.Image
+            import PIL.Image
+            
+            # Load the image
+            image = PIL.Image.open(screenshot_path)
+            
+            # Create the model response
+            response = self.model.generate_content(
+                [
+                    prompt,
+                    image
+                ],
+                stream=False  # Don't stream for image analysis
+            )
+            
+            # Check if response was blocked
+            if response.prompt_feedback.block_reason:
+                raise Exception("Response was blocked due to safety settings")
                 
-                image = PIL.Image.open(image_path)
-                response = self.model.generate_content(
-                    ["Analyze this screenshot and answer the following question or instruction:", image, prompt],
-                    stream=self.app.config.get("streaming", False)
-                )
-                
-                if response.prompt_feedback.block_reason:
-                    self.app.show_message_signal.emit('Content Blocked',
-                                                 'The generated content was blocked due to safety settings.')
-                    return
-
-                # Get the image analysis window from the app
-                analysis_window = self.app.popup_window.image_analysis_window
-                
-                try:
-                    for chunk in response:
-                        if self.close_requested:
-                            break
-                        else:
-                            # Update the chat history in the image analysis window
-                            analysis_window.add_ai_response(chunk.text)
-                except Exception as e:
-                    logging.error(f"Error while streaming: {e}")
-                    analysis_window.add_ai_response("An error occurred while streaming.")
-                finally:
-                    self.close_requested = False
+            # Get the text response
+            text_response = response.text
+            
+            # Find the ImageAnalysisWindow instance and update it
+            for window in QtWidgets.QApplication.topLevelWidgets():
+                if isinstance(window, ImageAnalysisWindow):
+                    window.add_ai_response(text_response)
+                    break
                     
-            elif isinstance(self, OpenAICompatibleProvider):
-                # For OpenAI-compatible provider (using GPT-4 Vision)
-                import base64
-                
-                # Read and encode the image
-                with open(image_path, "rb") as image_file:
-                    encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
-                
-                response = self.client.chat.completions.create(
-                    model="gpt-4-vision-preview",  # Make sure to use a vision-capable model
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": prompt},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:image/jpeg;base64,{encoded_image}"
-                                    }
-                                }
-                            ]
-                        }
-                    ],
-                    max_tokens=500
-                )
-                
-                # Get the image analysis window from the app
-                analysis_window = self.app.popup_window.image_analysis_window
-                analysis_window.add_ai_response(response.choices[0].message.content)
-                
         except Exception as e:
-            logging.error(f"Error analyzing image: {e}")
-            self.app.show_message_signal.emit('Error', f'Failed to analyze image: {str(e)}')
-
+            logging.error(f"Error in Gemini image analysis: {str(e)}")
+            for window in QtWidgets.QApplication.topLevelWidgets():
+                if isinstance(window, ImageAnalysisWindow):
+                    window.add_ai_response(f"Error analyzing image: {str(e)}")
+                    break
 
 class OpenAICompatibleProvider(AIProvider):
     def __init__(self, app):
@@ -351,5 +318,49 @@ class OpenAICompatibleProvider(AIProvider):
     def cancel(self):
         self.close_requested = True
 
-
-
+    def analyze_image(self, screenshot_path, prompt):
+        """
+        Analyze an image using OpenAI's vision capabilities
+        """
+        try:
+            import base64
+            
+            # Read and encode the image
+            with open(screenshot_path, "rb") as image_file:
+                encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+            
+            # Create the API request
+            response = self.client.chat.completions.create(
+                model="gpt-4-vision-preview",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{encoded_image}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=500
+            )
+            
+            # Get the response text
+            text_response = response.choices[0].message.content
+            
+            # Find the ImageAnalysisWindow instance and update it
+            for window in QtWidgets.QApplication.topLevelWidgets():
+                if isinstance(window, ImageAnalysisWindow):
+                    window.add_ai_response(text_response)
+                    break
+                    
+        except Exception as e:
+            logging.error(f"Error in OpenAI image analysis: {str(e)}")
+            for window in QtWidgets.QApplication.topLevelWidgets():
+                if isinstance(window, ImageAnalysisWindow):
+                    window.add_ai_response(f"Error analyzing image: {str(e)}")
+                    break
