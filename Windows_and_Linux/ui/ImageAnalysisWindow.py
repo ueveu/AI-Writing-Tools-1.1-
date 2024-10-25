@@ -14,14 +14,27 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         self.app = app
         self.screenshot_path = screenshot_path
         
-        # Initialize syntax highlighting formatter with custom styles
+        # Initialize syntax highlighting formatter with improved styles
         style = 'monokai' if colorMode == 'dark' else 'default'
+        background_color = '#1e1e1e' if colorMode == 'dark' else '#f8f8f8'
         self.formatter = HtmlFormatter(
             style=style,
             cssclass='highlight',
             noclasses=True,
-            linenos=False,
-            prestyles='border-radius: 5px; padding: 15px; margin: 10px 0;'
+            linenos=True,  # Enable line numbers
+            linenostart=1,
+            lineanchors='line',
+            linespans='line',
+            prestyles=f"""
+                border-radius: 8px;
+                padding: 16px;
+                margin: 10px 0;
+                background-color: {background_color};
+                font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                line-height: 1.4;
+                overflow-x: auto;
+            """
         )
         
         self.init_ui()
@@ -197,7 +210,7 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         main_content.addLayout(content_layout)
 
     def format_code_blocks(self, text):
-        """Format code blocks with syntax highlighting"""
+        """Format code blocks with enhanced syntax highlighting"""
         def replace_code_block(match):
             code = match.group(2)
             lang = match.group(1) if match.group(1) else ''
@@ -206,11 +219,61 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
                 if lang:
                     lexer = get_lexer_by_name(lang)
                 else:
-                    lexer = guess_lexer(code)
-                return highlight(code, lexer, self.formatter)
+                    # Try to guess the language, default to python if unsure
+                    try:
+                        lexer = guess_lexer(code)
+                    except ClassNotFound:
+                        lexer = get_lexer_by_name('python')
+                
+                # Add custom CSS wrapper
+                highlighted = highlight(code, lexer, self.formatter)
+                background_color = '#1e1e1e' if colorMode == 'dark' else '#f8f8f8'
+                border_color = '#333' if colorMode == 'dark' else '#ddd'
+                
+                return f"""
+                    <div style="
+                        background-color: {background_color};
+                        border: 1px solid {border_color};
+                        border-radius: 8px;
+                        margin: 10px 0;
+                        overflow: hidden;
+                    ">
+                        <div style="
+                            padding: 8px 16px;
+                            background-color: {'#252525' if colorMode == 'dark' else '#f1f1f1'};
+                            border-bottom: 1px solid {border_color};
+                            font-family: 'Segoe UI', 'Arial', sans-serif;
+                            font-size: 12px;
+                            color: {'#ccc' if colorMode == 'dark' else '#666'};
+                        ">
+                            {lang.upper() if lang else 'CODE'}
+                        </div>
+                        <div style="padding: 0;">
+                            {highlighted}
+                        </div>
+                    </div>
+                """
             except ClassNotFound:
-                # If language detection fails, default to plain text
-                return f'<pre style="background-color: {"#444" if colorMode == "dark" else "#f5f5f5"}; padding: 10px; border-radius: 5px;">{code}</pre>'
+                # If language detection fails, create a basic code block
+                background_color = '#1e1e1e' if colorMode == 'dark' else '#f8f8f8'
+                border_color = '#333' if colorMode == 'dark' else '#ddd'
+                return f"""
+                    <div style="
+                        background-color: {background_color};
+                        border: 1px solid {border_color};
+                        border-radius: 8px;
+                        padding: 16px;
+                        margin: 10px 0;
+                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                        font-size: 13px;
+                        line-height: 1.4;
+                        white-space: pre;
+                        overflow-x: auto;
+                        color: {'#fff' if colorMode == 'dark' else '#000'};
+                    ">
+                        {code}
+                    </div>
+                """
         
         # Replace ```language\ncode``` blocks
         pattern = r'```(\w+)?\n(.*?)```'
@@ -240,7 +303,7 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
             self.add_ai_response(f"Error analyzing image: {str(e)}")
         
     def add_ai_response(self, response):
-        """Add AI response to chat history with syntax highlighting"""
+        """Add AI response to chat history with enhanced syntax highlighting"""
         # Remove the "AI is thinking..." message
         current_text = self.chat_history.toHtml()
         current_text = current_text.replace('<i>AI is analyzing the image...</i><br>', '')
@@ -249,8 +312,15 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         # Format the response with syntax highlighting for code blocks
         formatted_response = self.format_code_blocks(response)
         
-        # Add the AI response
-        self.chat_history.append(f'<b>AI:</b> {formatted_response}<br>')
+        # Add the AI response with proper spacing
+        self.chat_history.append(f"""
+            <div style="margin-bottom: 16px;">
+                <b style="color: {'#4CAF50' if colorMode == 'dark' else '#2E7D32'};">AI:</b>
+                <div style="margin-top: 8px;">
+                    {formatted_response}
+                </div>
+            </div>
+        """)
         
         # Scroll to bottom
         self.chat_history.verticalScrollBar().setValue(
