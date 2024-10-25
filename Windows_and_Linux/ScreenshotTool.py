@@ -53,11 +53,13 @@ class ScreenshotTool(QtWidgets.QWidget):
             painter.setCompositionMode(QtGui.QPainter.CompositionMode_Clear)
             painter.eraseRect(rect)
             
-            # Draw border around selection
+            # Draw border around selection without extending outside the selection area
             painter.setCompositionMode(QtGui.QPainter.CompositionMode_SourceOver)
-            pen = QtGui.QPen(QtGui.QColor(0, 255, 0), 2)
+            pen = QtGui.QPen(QtGui.QColor(0, 255, 0), 1)  # Reduced pen width to 1
             painter.setPen(pen)
-            painter.drawRect(rect)
+            
+            # Draw the border inside the selection area
+            painter.drawRect(rect.adjusted(0, 0, -1, -1))  # Adjust by -1 to keep border inside
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -76,7 +78,9 @@ class ScreenshotTool(QtWidgets.QWidget):
 
     def mouseReleaseEvent(self, event):
         if self.is_selecting:
-            self.capture_screenshot()
+            # Ensure we have a valid selection
+            if self.begin and self.end and self.begin != self.end:
+                self.capture_screenshot()
             self.close()
 
     def capture_screenshot(self):
