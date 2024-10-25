@@ -242,14 +242,14 @@ class Gemini15FlashProvider(AIProvider):
             
             # Find the ImageAnalysisWindow instance and update it
             for window in QtWidgets.QApplication.topLevelWidgets():
-                if isinstance(window, ImageAnalysisWindow):
+                if window.__class__.__name__ == 'ImageAnalysisWindow':
                     window.add_ai_response(text_response)
                     break
                     
         except Exception as e:
             logging.error(f"Error in Gemini image analysis: {str(e)}")
             for window in QtWidgets.QApplication.topLevelWidgets():
-                if isinstance(window, ImageAnalysisWindow):
+                if window.__class__.__name__ == 'ImageAnalysisWindow':
                     window.add_ai_response(f"Error analyzing image: {str(e)}")
                     break
 
@@ -354,13 +354,13 @@ class OpenAICompatibleProvider(AIProvider):
             
             # Find the ImageAnalysisWindow instance and update it
             for window in QtWidgets.QApplication.topLevelWidgets():
-                if isinstance(window, ImageAnalysisWindow):
+                if window.__class__.__name__ == 'ImageAnalysisWindow':
                     window.add_ai_response(text_response)
                     break
                     
         except Exception as e:
             logging.error(f"Error in OpenAI image analysis: {str(e)}")
             for window in QtWidgets.QApplication.topLevelWidgets():
-                if isinstance(window, ImageAnalysisWindow):
+                if window.__class__.__name__ == 'ImageAnalysisWindow':
                     window.add_ai_response(f"Error analyzing image: {str(e)}")
                     break
