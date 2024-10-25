@@ -163,18 +163,28 @@ class ScreenshotTool(QtWidgets.QWidget):
             if width <= 0 or height <= 0:
                 return
 
-            # Adjust coordinates relative to the primary monitor
-            x1 += self.monitor["left"]
-            y1 += self.monitor["top"]
-            
-            # Capture the selected region
+            # Take a new clean screenshot without any overlay or selection border
             with mss.mss() as sct:
+                # Adjust coordinates relative to the primary monitor
+                x1 += self.monitor["left"]
+                y1 += self.monitor["top"]
+                
                 region = {
                     'top': y1,
                     'left': x1,
                     'width': width,
-                    'height': height
+                    'height': height,
+                    'mon': 1  # Ensure we're using the primary monitor
                 }
+                
+                # Capture without any UI elements
+                self.hide()  # Hide the selection UI
+                QtCore.QTimer.singleShot(50, lambda: self._finish_capture(region))  # Wait for UI to hide
+
+    def _finish_capture(self, region):
+        """Helper method to finish the capture after UI is hidden"""
+        try:
+            with mss.mss() as sct:
                 screenshot = sct.grab(region)
                 
                 # Generate filename with timestamp
@@ -190,3 +200,5 @@ class ScreenshotTool(QtWidgets.QWidget):
                 mss.tools.to_png(screenshot.rgb, screenshot.size, output=full_path)
                 
                 self.screenshot_taken.emit(full_path)
+        finally:
+            self.close()
