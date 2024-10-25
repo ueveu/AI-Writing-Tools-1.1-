@@ -5,3 +5,6 @@ keyboard
 pyperclip
 pynput
 PySide6
+Pillow
+mss
+

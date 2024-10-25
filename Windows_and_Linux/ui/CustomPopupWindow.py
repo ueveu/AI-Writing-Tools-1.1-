@@ -5,6 +5,8 @@ import sys
 from PySide6 import QtWidgets, QtCore, QtGui
 
 from ui.UIUtils import ThemeBackground, colorMode
+from ScreenshotTool import ScreenshotTool
+from ui.ImageAnalysisWindow import ImageAnalysisWindow
 
 class CustomPopupWindow(QtWidgets.QWidget):
     """
@@ -152,6 +154,22 @@ class CustomPopupWindow(QtWidgets.QWidget):
 
         QtCore.QTimer.singleShot(250, lambda: self.custom_input.setFocus())
 
+        # Add to the init_ui method, after the close button
+        screenshot_button = QtWidgets.QPushButton("📷")  # Using emoji temporarily
+        screenshot_button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                padding: 5px;
+                font-size: 20px;
+            }
+            QPushButton:hover {
+                background-color: rgba(128, 128, 128, 0.2);
+            }
+        """)
+        screenshot_button.clicked.connect(self.take_screenshot)
+        content_layout.addWidget(screenshot_button, 0, QtCore.Qt.AlignmentFlag.AlignRight)
+
     def eventFilter(self, obj, event):
         """
         Event filter to handle focus out events.
@@ -251,3 +269,28 @@ class CustomPopupWindow(QtWidgets.QWidget):
             self.close()
         else:
             super().keyPressEvent(event)
+
+    def take_screenshot(self):
+        """
+        Initialize and show the screenshot tool
+        """
+        self.hide()  # Hide the popup while taking screenshot
+        QtCore.QTimer.singleShot(200, self._show_screenshot_tool)  # Add small delay to ensure popup is hidden
+
+    def _show_screenshot_tool(self):
+        """
+        Helper method to show screenshot tool after delay
+        """
+        self.screenshot_tool = ScreenshotTool()
+        self.screenshot_tool.screenshot_taken.connect(self.handle_screenshot)
+        self.screenshot_tool.show()
+
+    def handle_screenshot(self, screenshot_path):
+        """
+        Handle the captured screenshot
+        """
+        self.close()  # Close the popup window
+        
+        # Create and show the image analysis window
+        self.image_analysis_window = ImageAnalysisWindow(self.app, screenshot_path)
+        self.image_analysis_window.show()

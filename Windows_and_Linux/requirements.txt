@@ -5,3 +5,5 @@ pyperclip
 pynput
 PySide6
 protobuf
+Pillow
+mss

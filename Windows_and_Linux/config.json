@@ -1,0 +1,11 @@
+{
+    "shortcut": "ctrl+space",
+    "theme": "gradient",
+    "providers": {
+        "Gemini 1.5 Flash (Recommended)": {
+            "api_key": "AIzaSyB0x3FmPRdtvmwfERTf8iD0XrvJtfpjLQ0"
+        }
+    },
+    "streaming": false,
+    "provider": "Gemini 1.5 Flash (Recommended)"
+}
