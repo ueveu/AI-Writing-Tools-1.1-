@@ -1,13 +1,25 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtCore import Qt
 import os
+import re
 from .UIUtils import ThemeBackground, colorMode
+from pygments import highlight
+from pygments.lexers import get_lexer_by_name, guess_lexer
+from pygments.formatters import HtmlFormatter
+from pygments.util import ClassNotFound
 
 class ImageAnalysisWindow(QtWidgets.QWidget):
     def __init__(self, app, screenshot_path):
         super().__init__()
         self.app = app
         self.screenshot_path = screenshot_path
+        
+        # Initialize syntax highlighting formatter
+        self.html_formatter = HtmlFormatter(
+            style='monokai' if colorMode == 'dark' else 'default',
+            cssclass='highlight'
+        )
+        
         self.init_ui()
         
         # Automatically trigger initial analysis
@@ -68,7 +80,7 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         chat_widget = QtWidgets.QWidget()
         chat_layout = QtWidgets.QVBoxLayout(chat_widget)
         
-        # Chat history
+        # Chat history with syntax highlighting support
         self.chat_history = QtWidgets.QTextEdit()
         self.chat_history.setReadOnly(True)
         self.chat_history.setStyleSheet(f"""
@@ -78,6 +90,19 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
                 border: 1px solid {'#555' if colorMode == 'dark' else '#ccc'};
                 border-radius: 5px;
                 padding: 10px;
+                font-family: "Consolas", monospace;
+            }}
+            
+            .highlight {{
+                background-color: {'#2d2d2d' if colorMode == 'dark' else '#f8f8f8'};
+                border-radius: 3px;
+                padding: 5px;
+                margin: 5px 0;
+            }}
+            
+            .highlight pre {{
+                margin: 0;
+                white-space: pre-wrap;
             }}
         """)
         chat_layout.addWidget(self.chat_history)
@@ -119,6 +144,31 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         chat_layout.addLayout(input_layout)
         content_layout.addWidget(chat_widget)
 
+    def format_code_blocks(self, text):
+        """Format code blocks with syntax highlighting"""
+        def replace_code_block(match):
+            code = match.group(2)
+            lang = match.group(1) if match.group(1) else ''
+            
+            try:
+                if lang:
+                    lexer = get_lexer_by_name(lang, stripall=True)
+                else:
+                    lexer = guess_lexer(code)
+                return highlight(code, lexer, self.html_formatter)
+            except ClassNotFound:
+                # If language not found, try to guess or use plain text
+                try:
+                    lexer = guess_lexer(code)
+                    return highlight(code, lexer, self.html_formatter)
+                except:
+                    # If all fails, return as plain text
+                    return f'<pre><code>{code}</code></pre>'
+        
+        # Replace ```language\ncode``` blocks
+        text = re.sub(r'```(\w+)?\n(.*?)```', replace_code_block, text, flags=re.DOTALL)
+        return text
+
     def send_message(self, default_prompt=None):
         """Send a message to the AI for analysis"""
         question = default_prompt if default_prompt else self.input_field.text().strip()
@@ -141,14 +191,17 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
             self.add_ai_response(f"Error analyzing image: {str(e)}")
         
     def add_ai_response(self, response):
-        """Add AI response to chat history"""
+        """Add AI response to chat history with syntax highlighting"""
         # Remove the "AI is thinking..." message
         current_text = self.chat_history.toHtml()
         current_text = current_text.replace('<i>AI is analyzing the image...</i><br>', '')
         self.chat_history.setHtml(current_text)
         
+        # Format the response with syntax highlighting for code blocks
+        formatted_response = self.format_code_blocks(response)
+        
         # Add the AI response
-        self.chat_history.append(f'<b>AI:</b> {response}<br>')
+        self.chat_history.append(f'<b>AI:</b> {formatted_response}<br>')
         
         # Scroll to bottom
         self.chat_history.verticalScrollBar().setValue(
