@@ -225,54 +225,63 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
                     except ClassNotFound:
                         lexer = get_lexer_by_name('python')
                 
-                # Add custom CSS wrapper
-                highlighted = highlight(code, lexer, self.formatter)
+                # Custom style for code blocks
                 background_color = '#1e1e1e' if colorMode == 'dark' else '#f8f8f8'
                 border_color = '#333' if colorMode == 'dark' else '#ddd'
+                text_color = '#d4d4d4' if colorMode == 'dark' else '#333333'
+                
+                # Configure formatter with custom styles
+                formatter = HtmlFormatter(
+                    style='monokai' if colorMode == 'dark' else 'default',
+                    noclasses=True,
+                    nowrap=False,
+                    linenos=False,
+                    cssclass='highlight',
+                    prestyles=f'background-color: {background_color}; color: {text_color}; font-family: "Consolas", "Monaco", monospace; font-size: 13px; line-height: 1.4;'
+                )
+                
+                highlighted = highlight(code.strip(), lexer, formatter)
                 
                 return f"""
                     <div style="
                         background-color: {background_color};
                         border: 1px solid {border_color};
-                        border-radius: 8px;
-                        margin: 10px 0;
+                        border-radius: 6px;
+                        margin: 8px 0;
                         overflow: hidden;
                     ">
                         <div style="
-                            padding: 8px 16px;
+                            padding: 6px 12px;
                             background-color: {'#252525' if colorMode == 'dark' else '#f1f1f1'};
                             border-bottom: 1px solid {border_color};
-                            font-family: 'Segoe UI', 'Arial', sans-serif;
+                            font-family: 'Segoe UI', system-ui, sans-serif;
                             font-size: 12px;
-                            color: {'#ccc' if colorMode == 'dark' else '#666'};
+                            color: {'#888' if colorMode == 'dark' else '#666'};
                         ">
-                            {lang.upper() if lang else 'CODE'}
+                            {lang.upper() if lang else 'PYTHON'}
                         </div>
-                        <div style="padding: 0;">
+                        <div style="padding: 12px;">
                             {highlighted}
                         </div>
                     </div>
                 """
+                
             except ClassNotFound:
-                # If language detection fails, create a basic code block
-                background_color = '#1e1e1e' if colorMode == 'dark' else '#f8f8f8'
-                border_color = '#333' if colorMode == 'dark' else '#ddd'
+                # Fallback formatting for unknown languages
                 return f"""
-                    <div style="
+                    <pre style="
                         background-color: {background_color};
                         border: 1px solid {border_color};
-                        border-radius: 8px;
-                        padding: 16px;
-                        margin: 10px 0;
-                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                        border-radius: 6px;
+                        padding: 12px;
+                        margin: 8px 0;
+                        font-family: 'Consolas', 'Monaco', monospace;
                         font-size: 13px;
                         line-height: 1.4;
-                        white-space: pre;
+                        color: {text_color};
+                        white-space: pre-wrap;
                         overflow-x: auto;
-                        color: {'#fff' if colorMode == 'dark' else '#000'};
-                    ">
-                        {code}
-                    </div>
+                    ">{code}</pre>
                 """
         
         # Replace ```language\ncode``` blocks
@@ -312,13 +321,18 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         # Format the response with syntax highlighting for code blocks
         formatted_response = self.format_code_blocks(response)
         
-        # Add the AI response with proper spacing
+        # Add the AI response with proper spacing and styling
         self.chat_history.append(f"""
-            <div style="margin-bottom: 16px;">
-                <b style="color: {'#4CAF50' if colorMode == 'dark' else '#2E7D32'};">AI:</b>
-                <div style="margin-top: 8px;">
-                    {formatted_response}
-                </div>
+            <div style="margin: 12px 0;">
+                <div style="
+                    color: {'#4CAF50' if colorMode == 'dark' else '#2E7D32'};
+                    font-weight: bold;
+                    margin-bottom: 6px;
+                ">AI:</div>
+                <div style="
+                    margin-left: 8px;
+                    line-height: 1.5;
+                ">{formatted_response}</div>
             </div>
         """)
         
@@ -333,3 +347,4 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
             self.close()
         else:
             super().keyPressEvent(event)
+
