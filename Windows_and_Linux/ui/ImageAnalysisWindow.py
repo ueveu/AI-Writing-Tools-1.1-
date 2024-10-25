@@ -211,11 +211,53 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         main_content.addLayout(content_layout)
 
     def format_code_blocks(self, text):
-        """Format code blocks with enhanced Claude-style syntax highlighting"""
+        """Format code blocks with enhanced syntax highlighting"""
         def replace_code_block(match):
             code = match.group(2)
-            lang = match.group(1) if match.group(1) else ''
+            lang = match.group(1) if match.group(1) else 'python'
             
+            # Colors for syntax highlighting
+            colors = {
+                'keyword': '#569CD6',     # blue
+                'builtin': '#4EC9B0',     # teal
+                'string': '#CE9178',      # orange
+                'comment': '#6A9955',     # green
+                'function': '#DCDCAA',    # yellow
+                'class': '#4EC9B0',       # teal
+                'number': '#B5CEA8',      # light green
+                'operator': '#D4D4D4',    # light gray
+                'punctuation': '#808080', # gray
+            }
+            
+            # Process the code
+            processed_code = code.strip()
+            
+            # Basic syntax highlighting patterns
+            patterns = [
+                # Keywords
+                (r'\b(def|class|import|from|return|if|else|elif|try|except|for|while|with|as|in|is|not|and|or|True|False|None|self)\b', 
+                 colors['keyword']),
+                # Built-in functions
+                (r'\b(print|len|str|int|float|list|dict|set|tuple|range|enumerate|zip|super|isinstance|hasattr|getattr|setattr)\b',
+                 colors['builtin']),
+                # Strings
+                (r'(".*?"|\'.*?\')', colors['string']),
+                # Comments
+                (r'(#.*$)', colors['comment']),
+                # Function definitions
+                (r'(def\s+\w+)', colors['function']),
+                # Class definitions
+                (r'(class\s+\w+)', colors['class']),
+                # Numbers
+                (r'\b(\d+\.?\d*)\b', colors['number']),
+                # Operators
+                (r'([+\-*/=<>!%&|^~]+)', colors['operator']),
+                # Punctuation
+                (r'([\[\]{}(),;.])', colors['punctuation']),
+            ]
+            
+            # Apply syntax highlighting
+            highlighted_code = processed_code
             try:
                 # Define colors for dark/light mode
                 if colorMode == 'dark':
@@ -301,52 +343,42 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
                 
                 return f"""
                     <div style="
-                        background: {bg_color};
+                        background: {colors['bg']};
                         border: 1px solid {'#333' if colorMode == 'dark' else '#E1E4E8'};
                         border-radius: 6px;
                         margin: 12px 0;
                         overflow: hidden;
-                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+                        font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
                     ">
                         <div style="
                             padding: 8px 16px;
                             background: {'#252525' if colorMode == 'dark' else '#F1F1F1'};
                             border-bottom: 1px solid {'#333' if colorMode == 'dark' else '#E1E4E8'};
                             color: {'#808080' if colorMode == 'dark' else '#57606A'};
-                            font-family: -apple-system, system-ui, sans-serif;
+                            font-family: system-ui, -apple-system, sans-serif;
                             font-size: 12px;
+                            font-weight: 500;
                         ">
-                            {lang.upper() if lang else 'CODE'}
+                            {lang.upper() if lang else 'PYTHON'}
                         </div>
-                        <pre style="
-                            margin: 0;
-                            padding: 16px;
-                            overflow-x: auto;
-                            font-size: 14px;
-                            line-height: 1.45;
-                            color: {text_color};
-                            background: transparent;
-                        "><code>{highlighted_code}</code></pre>
+                        <div style="padding: 16px;">
+                            <pre style="
+                                margin: 0;
+                                padding: 0;
+                                overflow-x: auto;
+                                font-size: 13px;
+                                line-height: 1.5;
+                                color: {colors['text']};
+                                background: transparent;
+                                font-family: inherit;
+                            "><code>{highlighted_code}</code></pre>
+                        </div>
                     </div>
                 """
                 
             except Exception as e:
                 logging.error(f"Error in code highlighting: {str(e)}")
-                # Fallback to simple formatting
-                return f"""
-                    <pre style="
-                        background: {'#1E1E1E' if colorMode == 'dark' else '#F8F8F8'};
-                        border: 1px solid {'#333' if colorMode == 'dark' else '#E1E4E8'};
-                        border-radius: 6px;
-                        padding: 16px;
-                        margin: 12px 0;
-                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-                        font-size: 14px;
-                        line-height: 1.45;
-                        color: {'#D4D4D4' if colorMode == 'dark' else '#24292E'};
-                        overflow-x: auto;
-                    ">{code}</pre>
-                """
+                return f'<pre style="color: {colors["text"]};">{code}</pre>'
         
         # Replace ```language\ncode``` blocks
         pattern = r'```(\w+)?\n(.*?)```'
