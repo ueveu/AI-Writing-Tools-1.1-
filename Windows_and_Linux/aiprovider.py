@@ -131,6 +131,21 @@ class AIProvider(ABC):
         """
         pass
 
+    def analyze_image(self, messages):
+        """
+        Analyze an image using the OpenAI API
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4-vision-preview",  # Make sure to use the vision model
+                messages=messages,
+                max_tokens=500
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logging.error(f"Error analyzing image: {str(e)}")
+            raise
+
 class Gemini15FlashProvider(AIProvider):
 
     def __init__(self, app):
@@ -335,5 +350,6 @@ class OpenAICompatibleProvider(AIProvider):
 
     def cancel(self):
         self.close_requested = True
+
 
 
