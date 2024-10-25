@@ -219,68 +219,98 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
                 if lang:
                     lexer = get_lexer_by_name(lang)
                 else:
-                    # Try to guess the language, default to python if unsure
                     try:
                         lexer = guess_lexer(code)
                     except ClassNotFound:
                         lexer = get_lexer_by_name('python')
                 
-                # Custom style for code blocks
-                background_color = '#1e1e1e' if colorMode == 'dark' else '#f8f8f8'
-                border_color = '#333' if colorMode == 'dark' else '#ddd'
-                text_color = '#d4d4d4' if colorMode == 'dark' else '#333333'
+                # Enhanced styling for code blocks
+                background_color = '#1e1e1e' if colorMode == 'dark' else '#ffffff'
+                border_color = '#2d2d2d' if colorMode == 'dark' else '#e0e0e0'
+                header_bg = '#252525' if colorMode == 'dark' else '#f5f5f5'
+                text_color = '#d4d4d4' if colorMode == 'dark' else '#24292e'
                 
-                # Configure formatter with custom styles
+                # Configure formatter with enhanced styles
                 formatter = HtmlFormatter(
-                    style='monokai' if colorMode == 'dark' else 'default',
+                    style='monokai' if colorMode == 'dark' else 'github-dark',
                     noclasses=True,
                     nowrap=False,
-                    linenos=False,
                     cssclass='highlight',
-                    prestyles=f'background-color: {background_color}; color: {text_color}; font-family: "Consolas", "Monaco", monospace; font-size: 13px; line-height: 1.4;'
+                    prestyles=f"""
+                        background: {background_color};
+                        color: {text_color};
+                        font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+                        font-size: 14px;
+                        line-height: 1.5;
+                        tab-size: 4;
+                    """
                 )
                 
                 highlighted = highlight(code.strip(), lexer, formatter)
                 
+                # Add keyword and function highlighting
+                highlighted = highlighted.replace(
+                    'def ', '<span style="color: #569cd6;">def</span> '
+                ).replace(
+                    'class ', '<span style="color: #569cd6;">class</span> '
+                ).replace(
+                    'import ', '<span style="color: #c586c0;">import</span> '
+                ).replace(
+                    'from ', '<span style="color: #c586c0;">from</span> '
+                )
+                
                 return f"""
                     <div style="
-                        background-color: {background_color};
+                        background: {background_color};
                         border: 1px solid {border_color};
-                        border-radius: 6px;
-                        margin: 8px 0;
+                        border-radius: 8px;
+                        margin: 12px 0;
                         overflow: hidden;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                     ">
                         <div style="
-                            padding: 6px 12px;
-                            background-color: {'#252525' if colorMode == 'dark' else '#f1f1f1'};
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 8px 16px;
+                            background: {header_bg};
                             border-bottom: 1px solid {border_color};
-                            font-family: 'Segoe UI', system-ui, sans-serif;
-                            font-size: 12px;
-                            color: {'#888' if colorMode == 'dark' else '#666'};
                         ">
-                            {lang.upper() if lang else 'PYTHON'}
+                            <span style="
+                                color: {'#808080' if colorMode == 'dark' else '#57606a'};
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                                font-size: 12px;
+                                font-weight: 500;
+                            ">
+                                {lang.upper() if lang else 'PYTHON'}
+                            </span>
                         </div>
-                        <div style="padding: 12px;">
+                        <div style="
+                            padding: 16px;
+                            overflow-x: auto;
+                            font-size: 14px;
+                            line-height: 1.5;
+                        ">
                             {highlighted}
                         </div>
                     </div>
                 """
                 
             except ClassNotFound:
-                # Fallback formatting for unknown languages
+                # Fallback formatting with improved styling
                 return f"""
                     <pre style="
-                        background-color: {background_color};
+                        background: {background_color};
                         border: 1px solid {border_color};
-                        border-radius: 6px;
-                        padding: 12px;
-                        margin: 8px 0;
-                        font-family: 'Consolas', 'Monaco', monospace;
-                        font-size: 13px;
-                        line-height: 1.4;
+                        border-radius: 8px;
+                        padding: 16px;
+                        margin: 12px 0;
+                        font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+                        font-size: 14px;
+                        line-height: 1.5;
                         color: {text_color};
-                        white-space: pre-wrap;
                         overflow-x: auto;
+                        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                     ">{code}</pre>
                 """
         
@@ -312,7 +342,7 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
             self.add_ai_response(f"Error analyzing image: {str(e)}")
         
     def add_ai_response(self, response):
-        """Add AI response to chat history with enhanced syntax highlighting"""
+        """Add AI response to chat history with enhanced styling"""
         # Remove the "AI is thinking..." message
         current_text = self.chat_history.toHtml()
         current_text = current_text.replace('<i>AI is analyzing the image...</i><br>', '')
@@ -321,17 +351,30 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         # Format the response with syntax highlighting for code blocks
         formatted_response = self.format_code_blocks(response)
         
-        # Add the AI response with proper spacing and styling
+        # Add the AI response with enhanced styling
         self.chat_history.append(f"""
-            <div style="margin: 12px 0;">
+            <div style="
+                margin: 16px 0;
+                padding: 0 4px;
+            ">
                 <div style="
-                    color: {'#4CAF50' if colorMode == 'dark' else '#2E7D32'};
-                    font-weight: bold;
-                    margin-bottom: 6px;
-                ">AI:</div>
+                    display: flex;
+                    align-items: center;
+                    margin-bottom: 8px;
+                ">
+                    <span style="
+                        color: {'#4CAF50' if colorMode == 'dark' else '#2E7D32'};
+                        font-weight: 600;
+                        font-size: 15px;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                    ">AI</span>
+                </div>
                 <div style="
-                    margin-left: 8px;
-                    line-height: 1.5;
+                    margin-left: 4px;
+                    line-height: 1.6;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                    font-size: 14px;
+                    color: {'#e0e0e0' if colorMode == 'dark' else '#24292e'};
                 ">{formatted_response}</div>
             </div>
         """)
