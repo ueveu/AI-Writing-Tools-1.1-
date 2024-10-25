@@ -4,8 +4,8 @@ import os
 import re
 from .UIUtils import ThemeBackground, colorMode
 from pygments import highlight
-from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
 
 class ImageAnalysisWindow(QtWidgets.QWidget):
@@ -15,9 +15,10 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         self.screenshot_path = screenshot_path
         
         # Initialize syntax highlighting formatter
-        self.html_formatter = HtmlFormatter(
+        self.formatter = HtmlFormatter(
             style='monokai' if colorMode == 'dark' else 'default',
-            cssclass='highlight'
+            cssclass='highlight',
+            noclasses=True
         )
         
         self.init_ui()
@@ -92,17 +93,10 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
                 padding: 10px;
                 font-family: "Consolas", monospace;
             }}
-            
             .highlight {{
-                background-color: {'#2d2d2d' if colorMode == 'dark' else '#f8f8f8'};
-                border-radius: 3px;
-                padding: 5px;
                 margin: 5px 0;
-            }}
-            
-            .highlight pre {{
-                margin: 0;
-                white-space: pre-wrap;
+                padding: 10px;
+                border-radius: 5px;
             }}
         """)
         chat_layout.addWidget(self.chat_history)
@@ -152,21 +146,18 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
             
             try:
                 if lang:
-                    lexer = get_lexer_by_name(lang, stripall=True)
+                    lexer = get_lexer_by_name(lang)
                 else:
                     lexer = guess_lexer(code)
-                return highlight(code, lexer, self.html_formatter)
+                return highlight(code, lexer, self.formatter)
             except ClassNotFound:
-                # If language not found, try to guess or use plain text
-                try:
-                    lexer = guess_lexer(code)
-                    return highlight(code, lexer, self.html_formatter)
-                except:
-                    # If all fails, return as plain text
-                    return f'<pre><code>{code}</code></pre>'
+                # If language detection fails, default to plain text
+                return f'<pre style="background-color: {"#444" if colorMode == "dark" else "#f5f5f5"}; padding: 10px; border-radius: 5px;">{code}</pre>'
         
         # Replace ```language\ncode``` blocks
-        text = re.sub(r'```(\w+)?\n(.*?)```', replace_code_block, text, flags=re.DOTALL)
+        pattern = r'```(\w+)?\n(.*?)```'
+        text = re.sub(pattern, replace_code_block, text, flags=re.DOTALL)
+        
         return text
 
     def send_message(self, default_prompt=None):
