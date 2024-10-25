@@ -35,9 +35,24 @@ class ScreenshotTool(QtWidgets.QWidget):
                          self.monitor["width"], self.monitor["height"])
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setCursor(Qt.CrossCursor)
+        
+        # Initialize size label
+        self.size_label = QtWidgets.QLabel(self)
+        self.size_label.setStyleSheet("""
+            QLabel {
+                background-color: #2e2e2e;
+                color: white;
+                border: 1px solid #3f3f3f;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+        """)
+        self.size_label.hide()
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
         
         # Draw the screenshot as background
         painter.drawPixmap(self.rect(), self.background)
@@ -53,17 +68,59 @@ class ScreenshotTool(QtWidgets.QWidget):
             painter.setCompositionMode(QtGui.QPainter.CompositionMode_Clear)
             painter.eraseRect(rect)
             
-            # Draw border around selection without extending outside the selection area
+            # Draw border around selection
             painter.setCompositionMode(QtGui.QPainter.CompositionMode_SourceOver)
-            pen = QtGui.QPen(QtGui.QColor(0, 255, 0), 1)  # Reduced pen width to 1
-            painter.setPen(pen)
             
-            # Draw the border inside the selection area
-            painter.drawRect(rect.adjusted(0, 0, -1, -1))  # Adjust by -1 to keep border inside
+            # Draw the outer glow effect
+            glow_color = QtGui.QColor(0, 255, 0, 40)
+            for i in range(3):
+                pen = QtGui.QPen(glow_color, i + 1)
+                painter.setPen(pen)
+                painter.drawRect(rect.adjusted(-i, -i, i, i))
+            
+            # Draw the main border
+            pen = QtGui.QPen(QtGui.QColor(0, 255, 0), 1.5)
+            painter.setPen(pen)
+            painter.drawRect(rect)
+            
+            # Draw corner handles
+            handle_size = 4
+            handle_color = QtGui.QColor(0, 255, 0)
+            painter.setPen(QtGui.QPen(handle_color, 1))
+            painter.setBrush(QtGui.QBrush(handle_color))
+            
+            # Draw handles at each corner
+            corners = [
+                rect.topLeft(), rect.topRight(),
+                rect.bottomLeft(), rect.bottomRight()
+            ]
+            for corner in corners:
+                painter.drawRect(QtCore.QRect(
+                    corner.x() - handle_size, 
+                    corner.y() - handle_size,
+                    handle_size * 2, 
+                    handle_size * 2
+                ))
+            
+            # Update size label
+            size_text = f"{rect.width()} × {rect.height()}px"
+            self.size_label.setText(size_text)
+            
+            # Position the label
+            label_x = rect.center().x() - self.size_label.width() // 2
+            label_y = rect.top() - 30
+            if label_y < 0:
+                label_y = rect.bottom() + 10
+            self.size_label.move(label_x, label_y)
+            self.size_label.show()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
+        elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            if self.is_selecting and self.begin != self.end:
+                self.capture_screenshot()
+                self.close()
 
     def mousePressEvent(self, event):
         self.begin = event.pos()
@@ -75,11 +132,23 @@ class ScreenshotTool(QtWidgets.QWidget):
         if self.is_selecting:
             self.end = event.pos()
             self.update()
+            
+            # Update size label position
+            rect = QtCore.QRect(self.begin, self.end).normalized()
+            size_text = f"{rect.width()} × {rect.height()}px"
+            self.size_label.setText(size_text)
+            
+            label_x = rect.center().x() - self.size_label.width() // 2
+            label_y = rect.top() - 30
+            if label_y < 0:
+                label_y = rect.bottom() + 10
+            self.size_label.move(label_x, label_y)
+            self.size_label.show()
 
     def mouseReleaseEvent(self, event):
         if self.is_selecting:
             # Ensure we have a valid selection
-            if self.begin and self.end and self.begin != self.end:
+            if self.begin != self.end:
                 self.capture_screenshot()
             self.close()
 
