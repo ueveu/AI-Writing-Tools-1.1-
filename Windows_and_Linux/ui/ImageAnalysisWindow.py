@@ -7,6 +7,7 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, guess_lexer
 from pygments.util import ClassNotFound
+import logging
 
 class ImageAnalysisWindow(QtWidgets.QWidget):
     def __init__(self, app, screenshot_path):
@@ -210,107 +211,140 @@ class ImageAnalysisWindow(QtWidgets.QWidget):
         main_content.addLayout(content_layout)
 
     def format_code_blocks(self, text):
-        """Format code blocks with enhanced syntax highlighting"""
+        """Format code blocks with enhanced Claude-style syntax highlighting"""
         def replace_code_block(match):
             code = match.group(2)
             lang = match.group(1) if match.group(1) else ''
             
             try:
-                if lang:
-                    lexer = get_lexer_by_name(lang)
+                # Define colors for dark/light mode
+                if colorMode == 'dark':
+                    colors = {
+                        'bg': '#1E1E1E',
+                        'text': '#D4D4D4',
+                        'keyword': '#569CD6',
+                        'string': '#CE9178',
+                        'comment': '#6A9955',
+                        'function': '#DCDCAA',
+                        'class': '#4EC9B0',
+                        'number': '#B5CEA8',
+                        'operator': '#D4D4D4',
+                        'variable': '#9CDCFE',
+                        'parameter': '#9CDCFE',
+                        'property': '#9CDCFE',
+                        'punctuation': '#D4D4D4',
+                    }
                 else:
-                    try:
-                        lexer = guess_lexer(code)
-                    except ClassNotFound:
-                        lexer = get_lexer_by_name('python')
+                    colors = {
+                        'bg': '#F8F8F8',
+                        'text': '#24292E',
+                        'keyword': '#D73A49',
+                        'string': '#032F62',
+                        'comment': '#6A737D',
+                        'function': '#6F42C1',
+                        'class': '#22863A',
+                        'number': '#005CC5',
+                        'operator': '#24292E',
+                        'variable': '#24292E',
+                        'parameter': '#24292E',
+                        'property': '#24292E',
+                        'punctuation': '#24292E',
+                    }
+
+                # Process the code with enhanced highlighting
+                lines = code.strip().split('\n')
+                highlighted_lines = []
                 
-                # Enhanced styling for code blocks
-                background_color = '#1e1e1e' if colorMode == 'dark' else '#ffffff'
-                border_color = '#2d2d2d' if colorMode == 'dark' else '#e0e0e0'
-                header_bg = '#252525' if colorMode == 'dark' else '#f5f5f5'
-                text_color = '#d4d4d4' if colorMode == 'dark' else '#24292e'
-                
-                # Configure formatter with enhanced styles
-                formatter = HtmlFormatter(
-                    style='monokai' if colorMode == 'dark' else 'github-dark',
-                    noclasses=True,
-                    nowrap=False,
-                    cssclass='highlight',
-                    prestyles=f"""
-                        background: {background_color};
-                        color: {text_color};
-                        font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
-                        font-size: 14px;
-                        line-height: 1.5;
-                        tab-size: 4;
-                    """
-                )
-                
-                highlighted = highlight(code.strip(), lexer, formatter)
-                
-                # Add keyword and function highlighting
-                highlighted = highlighted.replace(
-                    'def ', '<span style="color: #569cd6;">def</span> '
-                ).replace(
-                    'class ', '<span style="color: #569cd6;">class</span> '
-                ).replace(
-                    'import ', '<span style="color: #c586c0;">import</span> '
-                ).replace(
-                    'from ', '<span style="color: #c586c0;">from</span> '
-                )
+                for line in lines:
+                    # Handle comments first
+                    if line.strip().startswith('#'):
+                        line = f'<span style="color: {colors["comment"]}">{line}</span>'
+                    else:
+                        # Keywords
+                        keywords = ['def', 'class', 'import', 'from', 'return', 'if', 'else', 'elif',
+                                  'for', 'while', 'try', 'except', 'with', 'as', 'in', 'is', 'not',
+                                  'and', 'or', 'True', 'False', 'None', 'self', 'lambda']
+                        
+                        for keyword in keywords:
+                            line = re.sub(f'\\b{keyword}\\b', 
+                                        f'<span style="color: {colors["keyword"]}">{keyword}</span>', 
+                                        line)
+                        
+                        # Strings (handle both single and double quotes)
+                        line = re.sub(r'("(?:[^"\\]|\\.)*")|\'(?:[^\'\\]|\\.)*\'', 
+                                    f'<span style="color: {colors["string"]}">\\g<0></span>', 
+                                    line)
+                        
+                        # Numbers
+                        line = re.sub(r'\b(\d+\.?\d*)\b', 
+                                    f'<span style="color: {colors["number"]}>\\1</span>', 
+                                    line)
+                        
+                        # Function calls
+                        line = re.sub(r'(\w+)\s*\(', 
+                                    f'<span style="color: {colors["function"]}>\\1</span>(', 
+                                    line)
+                        
+                        # Class names (capitalized words)
+                        line = re.sub(r'\b([A-Z]\w*)\b', 
+                                    f'<span style="color: {colors["class"]}>\\1</span>', 
+                                    line)
+                        
+                        # Properties and methods
+                        line = re.sub(r'\.(\w+)', 
+                                    f'.<span style="color: {colors["property"]}>\\1</span>', 
+                                    line)
+
+                    highlighted_lines.append(line)
+
+                highlighted_code = '\n'.join(highlighted_lines)
                 
                 return f"""
                     <div style="
-                        background: {background_color};
-                        border: 1px solid {border_color};
-                        border-radius: 8px;
+                        background: {bg_color};
+                        border: 1px solid {'#333' if colorMode == 'dark' else '#E1E4E8'};
+                        border-radius: 6px;
                         margin: 12px 0;
                         overflow: hidden;
-                        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
                     ">
                         <div style="
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
                             padding: 8px 16px;
-                            background: {header_bg};
-                            border-bottom: 1px solid {border_color};
+                            background: {'#252525' if colorMode == 'dark' else '#F1F1F1'};
+                            border-bottom: 1px solid {'#333' if colorMode == 'dark' else '#E1E4E8'};
+                            color: {'#808080' if colorMode == 'dark' else '#57606A'};
+                            font-family: -apple-system, system-ui, sans-serif;
+                            font-size: 12px;
                         ">
-                            <span style="
-                                color: {'#808080' if colorMode == 'dark' else '#57606a'};
-                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-                                font-size: 12px;
-                                font-weight: 500;
-                            ">
-                                {lang.upper() if lang else 'PYTHON'}
-                            </span>
+                            {lang.upper() if lang else 'CODE'}
                         </div>
-                        <div style="
+                        <pre style="
+                            margin: 0;
                             padding: 16px;
                             overflow-x: auto;
                             font-size: 14px;
-                            line-height: 1.5;
-                        ">
-                            {highlighted}
-                        </div>
+                            line-height: 1.45;
+                            color: {text_color};
+                            background: transparent;
+                        "><code>{highlighted_code}</code></pre>
                     </div>
                 """
                 
-            except ClassNotFound:
-                # Fallback formatting with improved styling
+            except Exception as e:
+                logging.error(f"Error in code highlighting: {str(e)}")
+                # Fallback to simple formatting
                 return f"""
                     <pre style="
-                        background: {background_color};
-                        border: 1px solid {border_color};
-                        border-radius: 8px;
+                        background: {'#1E1E1E' if colorMode == 'dark' else '#F8F8F8'};
+                        border: 1px solid {'#333' if colorMode == 'dark' else '#E1E4E8'};
+                        border-radius: 6px;
                         padding: 16px;
                         margin: 12px 0;
-                        font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+                        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
                         font-size: 14px;
-                        line-height: 1.5;
-                        color: {text_color};
+                        line-height: 1.45;
+                        color: {'#D4D4D4' if colorMode == 'dark' else '#24292E'};
                         overflow-x: auto;
-                        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                     ">{code}</pre>
                 """
         
